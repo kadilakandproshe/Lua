@@ -1,18 +1,96 @@
+
 local pLocalPlayer = LocalPlayer()
 local ScrW, ScrH = ScrW(), ScrH()
 local ThirdpersonVal = false
 local TargetPriorities = {}
 for i = 1, 128 do table.insert( TargetPriorities, 0 ) end
 
-local Configuration = {}
+local Configuration = { Vars = {}, Convars = {} }
+local ConfigManager = {}
 
-Configuration.Box 									= false
-Configuration.Name 									= false
-Configuration.Health 								= false
-Configuration.Weapon 								= false
-Configuration.DLight 								= false
-Configuration.ThirdPerson                           = false
-Configuration.CircleStrafe 							= false
+Configuration.Vars.Box 									= false
+Configuration.Vars.Name 								= false
+Configuration.Vars.Health 								= false
+Configuration.Vars.Weapon 								= false
+Configuration.Vars.DLight 								= false
+Configuration.Vars.ThirdPerson                          = false
+Configuration.Vars.CircleStrafe 						= false
+
+Configuration.Vars.ConfigName 							= "default"
+Configuration.Vars.SelectConfig 						= 1
+
+Configuration.Convars.Aim_Team = GetConVarNumber("Aim_Team")
+Configuration.Convars.Extrapolation = GetConVarNumber("Extrapolation")
+Configuration.Convars.Alternative = GetConVarNumber("Alternative")
+Configuration.Convars.Aim_Intersection = GetConVarNumber("Aim_Intersection")
+Configuration.Convars.Aim_Height = GetConVarNumber("Aim_Height")
+Configuration.Convars.Aim_Group = GetConVarNumber("Aim_Group")
+Configuration.Convars.Angle_X = GetConVarNumber("Angle_X")
+Configuration.Convars.Angle_Y = GetConVarNumber("Angle_Y")
+Configuration.Convars.First_Choked_Angle_Y = GetConVarNumber("First_Choked_Angle_Y")
+Configuration.Convars.Second_Choked_Angle_Y = GetConVarNumber("Second_Choked_Angle_Y")
+Configuration.Convars.Maximum_Choked_Commands = GetConVarNumber("Maximum_Choked_Commands")
+Configuration.Convars.Minimum_Choked_Commands = GetConVarNumber("Minimum_Choked_Commands")
+Configuration.Convars.Bruteforce = GetConVarNumber("Bruteforce")
+Configuration.Convars.Bruteforce_Tolerance  = GetConVarNumber("Bruteforce_Tolerance")
+Configuration.Convars.Bruteforce_Memory_Tolerance  = GetConVarNumber("Bruteforce_Memory_Tolerance")
+Configuration.Convars.Uber_Alles_Scale = GetConVarNumber("Uber_Alles_Scale")
+Configuration.Convars.Uber_Alles_Speed = GetConVarNumber("Uber_Alles_Speed")
+
+do 
+    if ( not file.Exists( "data/Segregation", "GAME" ) ) then 
+        file.CreateDir("Segregation") 
+    end
+
+    if ( not file.Exists( "Segregation/Default.txt", "DATA" ) ) then 
+        file.Write( "Segregation/Default.txt", util.TableToJSON( Configuration, false ) ) 
+    end
+end
+
+function Configuration.FillTable()
+    local ftbl = file.Find( "Segregation/*.txt", "DATA" )
+    ConfigManager = {}
+    if ( not ftbl[1] ) then return end
+
+    for  i = 1, #ftbl do
+        local str = ftbl[i] 
+        local len = string.len( str )
+        local f = string.sub( str, 1, len - 4 )
+
+        ConfigManager[ #ConfigManager + 1 ] = f
+    end
+end
+
+Configuration.FillTable()
+
+function Configuration.SaveConfig()
+    local tojs = util.TableToJSON(Configuration, false)
+    file.Write("Segregation/" .. Configuration.Vars.ConfigName .. ".txt", tojs)
+    Configuration.FillTable()
+end
+
+function Configuration.LoadConfig()
+    local str = ConfigManager[ Configuration.Vars.SelectConfig ]
+    if ( not file.Exists( "data/Segregation/" .. str .. ".txt", "GAME" ) ) then return end 
+
+    local read = file.Read( "Segregation/" .. str .. ".txt", "data" )
+    local totbl = util.JSONToTable( read )
+
+    for k, v in pairs( totbl ) do
+        if ( type(v) == "table" ) then 
+            for key, value in pairs( v ) do
+                local tbl = Configuration
+                if ( k == "Vars" ) then
+                    tbl = Configuration.Vars
+				elseif ( k == "Convars" ) then
+					tbl = Configuration.Convars
+					RunConsoleCommand(key, tostring(value))
+                end
+                tbl[ key ] = value
+            end
+        end
+    end
+end
 
 local ColorF = {}
 
@@ -187,10 +265,10 @@ function DCheckboxLabel( Parent, SetText, Config, Convar )
     if ( Convar ) then
     	DCheckboxLabel:SetConVar( Config )
 	else
-		DCheckboxLabel:SetValue( Configuration[ Config ] )
+		DCheckboxLabel:SetValue( Configuration.Vars[ Config ] )
 
 		function DCheckboxLabel:OnChange( bVal )
-			Configuration[ Config ] = bVal
+			Configuration.Vars[ Config ] = bVal
 		end
 	end
 end
@@ -250,7 +328,6 @@ local function DNumSlider( Parent, SetText, Config, SetMin, SetMax, SetDecimals 
     DLabel:DockMargin( 10, 10, 0, 0 )
     DLabel:SetFont( "General Outline" )
     DLabel:SetTextColor( ColorF.White )
-
 end
 
 do
@@ -342,21 +419,21 @@ local function DComboBox( Parent, SetText, Config, Choices, Number, Convar )
     DComboBox:SetWide( 120 )
     DComboBox:SetSortItems( false )
 	for i = 1, #Choices do
-        if Convar then
+        if ( Convar ) then
             DComboBox:AddChoice( Choices[i], Number[i] )
         else
             DComboBox:AddChoice( Choices[i] )
         end
     end
 
-	if Convar then
+	if ( Convar ) then
 		DComboBox:SetConVar( Config )
 		DComboBox.OnSelect = function( self, index, value, data ) RunConsoleCommand( self.m_strConVar, data ) end
 	else
-       DComboBox:ChooseOptionID( Configuration[ Config ] )
+       DComboBox:ChooseOptionID( Configuration.Vars[ Config ] )
         
         DComboBox.OnSelect = function( s, index, value, data )
-            Configuration[ Config ] = index
+            Configuration.Vars[ Config ] = index
         end
 	end
 
@@ -533,6 +610,7 @@ local function SegregationPanel()
     TabButton(DPanel, "Visuals", "Visuals")
     TabButton(DPanel, "Misc", "Misc")
     TabButton(DPanel, "PlayerList", "PlayerList")
+	TabButton(DPanel, "Configuration", "Configuration")
 
 	local DPanel2 = DFrame:Add( "DPanel" )
     DPanel2:Dock( FILL )
@@ -714,6 +792,81 @@ local function SegregationPanel()
 		Menu:Open()
 	end
     
+	TabPanel.Configuration = DPanel2:Add( "DListView" )
+    TabPanel.Configuration:Dock( FILL )
+    TabPanel.Configuration:SetVisible( false )
+    TabPanel.Configuration.Paint = function( s, w, h )
+        CSF.DrawRect( 0, 0, w, h, ColorF.SapphireBlueAlpha )
+    end
+
+	local SaveTextPanel = TabPanel.Configuration:Add( "DPanel" )
+    SaveTextPanel:Dock( TOP )
+    SaveTextPanel:SetTall( 25 )
+    SaveTextPanel:DockMargin( 0, 10, 0, 0 ) 
+    SaveTextPanel.Paint = nil 
+
+	local TextEntry = vgui.Create( "DTextEntry", SaveTextPanel )
+	TextEntry:SetText( Configuration.Vars.ConfigName )
+	TextEntry:SetFont( "General" )
+	TextEntry:SetValue(Configuration.Vars.ConfigName)
+
+	TextEntry.Think = function()
+		Configuration.Vars.ConfigName = TextEntry:GetValue()
+	end 
+
+	local SavePanel = TabPanel.Configuration:Add( "DPanel" )
+    SavePanel:Dock( TOP )
+    SavePanel:SetTall( 25 )
+    SavePanel:DockMargin( 0, 0, 0, 0 ) 
+    SavePanel.Paint = nil 
+	
+	local ButtonSave = vgui.Create( "DButton", SavePanel )
+	ButtonSave:SetText( "" )
+	ButtonSave:SetWide( 100 )
+	ButtonSave.DoClick = function() 
+		Configuration.SaveConfig() 
+	end
+	ButtonSave.Paint = function( s, w, h )
+		local ColorDrawRect 
+		if ( s:IsHovered() ) then
+			ColorDrawRect = ColorF.GreyUmber
+		else
+			ColorDrawRect = ColorF.Scarlet
+		end
+		local TextWidth, TextHeight = CSF.GetTextSize( "Save Config", "General" )
+		CSF.DrawRect( 0, 0, w, h, ColorDrawRect )
+		CSF.DrawOutlinedRect(0, 0, w, h, 1, ColorF.White )
+		CSF.DrawText( w / 2 - TextWidth / 2 , h / 2 - TextHeight / 2,  "Save Config", "General", ColorF.White )
+	end
+
+	DComboBox( TabPanel.Configuration, "Manage configuration", "SelectConfig", ConfigManager, {"1"}, false )
+
+	local LoadPanel = TabPanel.Configuration:Add( "DPanel" )
+    LoadPanel:Dock( TOP )
+    LoadPanel:SetTall( 25 )
+    LoadPanel:DockMargin( 0, 0, 0, 0 ) 
+    LoadPanel.Paint = nil 
+	
+	local ButtonLoad = vgui.Create( "DButton", LoadPanel )
+	ButtonLoad:SetText( "" )
+	ButtonLoad:SetWide( 100 )
+	ButtonLoad.DoClick = function() 
+		Configuration.LoadConfig()
+
+	end
+	ButtonLoad.Paint = function( s, w, h )
+		local ColorDrawRect 
+		if ( s:IsHovered() ) then
+			ColorDrawRect = ColorF.GreyUmber
+		else
+			ColorDrawRect = ColorF.Scarlet
+		end
+		local TextWidth, TextHeight = CSF.GetTextSize( "Load Config", "General" )
+		CSF.DrawRect( 0, 0, w, h, ColorDrawRect )
+		CSF.DrawOutlinedRect(0, 0, w, h, 1, ColorF.White )
+		CSF.DrawText( w / 2 - TextWidth / 2 , h / 2 - TextHeight / 2,  "Load Config", "General", ColorF.White )
+	end
+
 
 	TabPanel[PanelName]:SetVisible(true)
     
@@ -725,9 +878,9 @@ SegregationPanel()
 
 function HookF.HookFunc.Think()
 
-    if ( SwitchPerson != Configuration.ThirdPerson ) then
-        RunConsoleCommand(Configuration.ThirdPerson and "thirdperson" or "firstperson")
-        SwitchPerson = Configuration.ThirdPerson
+    if ( SwitchPerson != Configuration.Vars.ThirdPerson ) then
+        RunConsoleCommand(Configuration.Vars.ThirdPerson and "thirdperson" or "firstperson")
+        SwitchPerson = Configuration.Vars.ThirdPerson
     end
 
 	if ( input.IsKeyDown( KEY_INSERT ) && !PrevKeyDown ) then
@@ -744,7 +897,7 @@ function HookF.HookFunc.Think()
 
 	PrevKeyDown = input.IsKeyDown( KEY_INSERT )
 
-    if ( Configuration.DLight ) then
+    if ( Configuration.Vars.DLight ) then
 		local hsv = HSVToColor( ( CurTime() * 25 ) % 360, 1, 1 )
 		local dlight = DynamicLight( pLocalPlayer:EntIndex() )
 		if ( dlight ) then
@@ -778,18 +931,18 @@ function VisualF.DrawPlayerVisual( entity )
 
     local width, height = maxX - minX, maxY - minY 
 
-    if ( Configuration.Box ) then
+    if ( Configuration.Vars.Box ) then
 		CSF.DrawOutlinedRect( minX + 1, minY + 1, width, height, 1, ColorF.Black )
 		CSF.DrawOutlinedRect( minX, minY, width, height, 1, ColorF.BismarckFurioso )
     end
 
-	if ( Configuration.Name  ) then
+	if ( Configuration.Vars.Name  ) then
         local str = entity:Name()
         local textWidth, textHeight = CSF.GetTextSize( str, "General Outline" )
 		CSF.DrawText( minX + ( width - textWidth ) * 0.5, minY - 16, str, "General Outline", ColorF.Eggshell )
     end
 
-	if ( Configuration.Weapon ) then
+	if ( Configuration.Vars.Weapon ) then
         local weapon = entity:GetActiveWeapon()
 
         if ( IsValid( weapon ) ) then
@@ -799,7 +952,7 @@ function VisualF.DrawPlayerVisual( entity )
         end
     end
 
-	if ( Configuration.Health ) then
+	if ( Configuration.Vars.Health ) then
 		local str = entity:Health()
 		local textWidth, textHeight = CSF.GetTextSize( str, "General Outline" )
 		CSF.DrawText( minX - textWidth - 2, minY, str, "General Outline", ColorF.LawnGreen )
@@ -1109,7 +1262,7 @@ end
  
 local function AutoStrafe( UserCMD )
  
-	if ( input.IsKeyDown( KEY_E ) and Configuration.CircleStrafe) then
+	if ( input.IsKeyDown( KEY_E ) and Configuration.Vars.CircleStrafe) then
  
 		CircleStrafe( UserCMD )
  
