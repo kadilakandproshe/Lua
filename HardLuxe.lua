@@ -1,6 +1,6 @@
 require("zxcmodule")
 
-if not ded then return end
+if ( not ded ) then return end
 
 ded.Write = nil
 ded.Read = nil
@@ -9,37 +9,31 @@ local pLocalPlayer = LocalPlayer()
 local ScrW, ScrH = ScrW(), ScrH()
 local TICK_INTERVAL = engine.TickInterval()
 
+local function TIME_TO_TICKS( time )
+    return math.floor( 0.5 + time / TICK_INTERVAL )
+end
+
 ded.SetInterpolation( false )
 ded.SetSequenceInterpolation( false )
 
 -- Settings
 
-local Settings = {}
-
-Settings.Aimbot = false
-Settings.AimbotBind = 0
-Settings.Autofire = false
-
-Settings.Box = true
-Settings.Name = true
-Settings.Weapon = true
-Settings.EyePos = true
-Settings.OreStone = false
-Settings.Cloth = false
-
-Settings.RemoveSlowDown = true
+local Settings = {
+    Aimbot = false
+    AimbotBind = 0
+    Autofire = false
+    Box = true
+    Name = true
+    Weapon = true
+    EyePos = true
+    OreStone = false
+    Cloth = false
+    RemoveSlowDown = true
+}
 
 -- Color
 
-local Theme = {}
-
-Theme.WaterMark     = Color( 155, 162, 255 )
-Theme.C_Elements    = Color( 255, 255, 255 )
-
-Theme.Box           = Color( 25, 129, 255 )
-Theme.Name          = Color( 255, 255, 255 )
-Theme.Weapon        = Color( 255, 255, 255 )
-Theme.EyePos        = Color( 55, 155, 55 )
+local Theme = { WaterMark = Color( 155, 162, 255 ), C_Elements = Color( 255, 255, 255 ), Box = Color( 25, 129, 255 ), Name = Color( 255, 255, 255 ), Weapon = Color( 255, 255, 255 ), EyePos = Color( 55, 155, 55 ) }
 
 -- Font
 
@@ -50,20 +44,7 @@ surface.CreateFont( "hardluxe.main" , { font = "Verdana", size = 13, antialias =
 local C_Elements = {}
 local C_Visual = {}
 local C_Hook = {}
-
-local C_Math = {}
-
-local function TIME_TO_TICKS( time )
-    return math.floor( 0.5 + time / TICK_INTERVAL )
-end
-
-local Userinterface = {}
-Userinterface.bShow = false
-Userinterface.bWasDown = false
-Userinterface.bIsClicked = false
-Userinterface.bWasClicked = false
-Userinterface.bIsDown = false
-
+local Userinterface = { bShow = false, bWasDown = false, bIsClicked = false, bWasClicked = false, bIsDown = false }
 local C_Inputs = { x = 0, y = 0 }
 
 function C_Inputs.InArea( x, y, w, h )
@@ -81,8 +62,7 @@ function C_Inputs.IsKeysDown( Key )
     return ( input.IsKeyDown( Key ) )
 end
 
-local C_Trase = {}
-C_Trase.Result = {}
+local C_Trase = { Result = {}, }
 C_Trase.Structure = { filter = pLocalPlayer, output = C_Trase.Result }
 
 function C_Trase.TraceLine( start, endpos, filter, mask )
@@ -128,24 +108,23 @@ function C_Trase.IsVisible( ply, pos, hitgroup )
     return ( C_Trase.Result.Entity == ply )
 end
 
-local C_Movement = {}
-C_Movement.silentAngles = false 
+local C_Movement = { SilentAngles = Angle() }
 
 function C_Movement.UpdateSilentAngles( usercmd )
     local mouseX, mouseY = usercmd:GetMouseX(), usercmd:GetMouseY()
     local yawSpeed, pitchSpeed = GetConVar( "m_yaw" ):GetFloat(), GetConVar( "m_pitch" ):GetFloat()
 
-    if ( not C_Movement.silentAngles ) then
-        C_Movement.silentAngles = usercmd:GetViewAngles()
+    if ( not C_Movement.SilentAngles ) then
+        C_Movement.SilentAngles = usercmd:GetViewAngles()
     end
 
-    C_Movement.silentAngles.x = math.Clamp( C_Movement.silentAngles.x + mouseY * pitchSpeed, -89, 89 )
-    C_Movement.silentAngles.y = math.NormalizeAngle( C_Movement.silentAngles.y + mouseX * -yawSpeed )
-    C_Movement.silentAngles.r = 0
+    C_Movement.SilentAngles.x = math.Clamp( C_Movement.SilentAngles.x + mouseY * pitchSpeed, -89, 89 )
+    C_Movement.SilentAngles.y = math.NormalizeAngle( C_Movement.SilentAngles.y + mouseX * -yawSpeed )
+    C_Movement.SilentAngles.r = 0
 
-    C_Movement.silentAngles:Normalize()
+    C_Movement.SilentAngles:Normalize()
 
-    usercmd:SetViewAngles( C_Movement.silentAngles )
+    usercmd:SetViewAngles( C_Movement.SilentAngles )
 end
 
 function C_Movement.FixMovement( usercmd, wishYaw )
@@ -155,11 +134,6 @@ function C_Movement.FixMovement( usercmd, wishYaw )
 	usercmd:SetForwardMove( forwardmove * math.cos( yawdiff ) + sidemove * math.sin( yawdiff ) )
 	usercmd:SetSideMove( forwardmove * -math.sin( yawdiff ) + sidemove * math.cos( yawdiff ) )
 end
-
-local C_Aimbot = {}
-C_Aimbot.NotPredictileWep = { ["rust_dbarrel"] = true, ["rust_spas12"] = true,["rust_waterpipe"] = true,["rust_pumpshotgun"] = true,["rust_pickaxe"] = true,["rust_hatchet"] = true,["rust_boneclub"] = true,["rust_combatknife"] = true,["rust_woodenspear"] = true,["rust_stonespear"] = true,["rust_stonepickaxe"] = true,["rust_stonehatchet"] = true,["rust_salvagedsword"] = true,["rust_salvagedcleaver"] = true,["rust_rock"] = true}
-
-local C_Priority = {}
 
 function C_Hook.Think()
    
@@ -176,7 +150,7 @@ function C_Hook.Think()
     Userinterface.bWasClicked = Userinterface.bIsDown
 end
 
-function C_Elements.CheckBox(x, y, vars)
+function C_Elements.CheckBox( x, y, vars )
     local state = isbool( Settings[ vars ] ) and ( Settings[ vars ] and "[True]" or "[False]") or Settings[ vars ]
     local str = string.format( "%s: %s", vars, state )  
 
@@ -190,7 +164,7 @@ function C_Elements.CheckBox(x, y, vars)
     end
 end
 
-function C_Elements.Binder(x, y, vars)
+function C_Elements.Binder( x, y, vars )
     local key = input.GetKeyName( Settings[ vars ] ) or "None"
 
     local str = string.format( "%s: [%s]", vars, key )
@@ -302,7 +276,6 @@ function C_Visual.GetEntityScreenBounds( entity )
 end
 
 function C_Visual.PlayerESP( entity )
-
     local minX, minY, maxX, maxY = C_Visual.GetEntityScreenBounds( entity )
 
     if ( not minX ) then
@@ -418,9 +391,12 @@ function C_Hook.DrawOverlay()
 
 end
 
+local C_Priority = {}
+local C_Aimbot = {}
+C_Aimbot.NotPredictileWep = { ["rust_dbarrel"] = true, ["rust_spas12"] = true,["rust_waterpipe"] = true,["rust_pumpshotgun"] = true,["rust_pickaxe"] = true,["rust_hatchet"] = true,["rust_boneclub"] = true,["rust_combatknife"] = true,["rust_woodenspear"] = true,["rust_stonespear"] = true,["rust_stonepickaxe"] = true,["rust_stonehatchet"] = true,["rust_salvagedsword"] = true,["rust_salvagedcleaver"] = true,["rust_rock"] = true}
+
 function C_Aimbot.GetSortedPlayers()
     local sorted = {}
-
     local playerlist = player.GetAll()
 
     for i = 1, #playerlist do
@@ -448,7 +424,7 @@ function C_Aimbot.GetSortedPlayers()
     return sorted
 end
 
-function C_Aimbot.GetAimPos(ply, visibleCheck)
+function C_Aimbot.GetAimPos( ply, visibleCheck )
     local hitboxCount = ply:GetHitBoxCount( 0 )
 
     for hitboxIndex = 0, hitboxCount - 1 do
@@ -621,12 +597,10 @@ end
 function C_Hook.CreateMove( usercmd )
     C_Movement.UpdateSilentAngles( usercmd )
 
-    if Userinterface.bShow then
+    if ( Userinterface.bShow ) then
         usercmd:ClearMovement()
         usercmd:ClearButtons()
     end
-
-    if usercmd:CommandNumber() == 0 then return end 
 
     if ( pLocalPlayer:Alive() ) then
 
@@ -634,21 +608,15 @@ function C_Hook.CreateMove( usercmd )
 
 	    ded.StartPrediction( usercmd )
             C_Aimbot.RunAimbot( usercmd )
-            C_Movement.FixMovement( usercmd, C_Movement.silentAngles.y )
+            C_Movement.FixMovement( usercmd, C_Movement.SilentAngles.y )
         ded.FinishPrediction() 
     end
 end
 
 local cameraOrigin, cameraAngles
 function C_Hook.CalcView( ply, origin, angles, fov, znear, zfar )
-    local camera = {
-        origin = origin,
-        angles = angles,
-        angles = C_Movement.silentAngles
-    }
-
+    local camera = { origin = origin, angles = angles, angles = C_Movement.SilentAngles }
     cameraOrigin, cameraAngles = camera.origin, camera.angles
-
     return ( camera )
 end
 
